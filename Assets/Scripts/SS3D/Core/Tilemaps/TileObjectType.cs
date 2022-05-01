@@ -1,4 +1,4 @@
-﻿namespace SS3D.Engine.Tile.TileRework
+﻿namespace SS3D.Core.Tilemaps
 {
     public enum TileObjectGenericType
     {

@@ -1,13 +1,15 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using SS3D.Engine.Tile.TileRework;
 using SS3D.Engine.Tiles;
 using UnityEngine;
 
-namespace SS3D.Engine.Tile.TileRework
+namespace SS3D.Core.Tilemaps
 {
     /// <summary>
     /// Scriptable object that should be used for every tile object.
     /// </summary>
-    [CreateAssetMenu(fileName = "TileObjectSo", menuName = "TileMap/TileObjectSo", order = 0)]
+    [CreateAssetMenu(fileName = "TileObjectSo", menuName = "Tilemap/TileObjectSo", order = 0)]
     public class TileObjectSo : ScriptableObject
     {
         public TileLayer layer;
@@ -32,11 +34,10 @@ namespace SS3D.Engine.Tile.TileRework
         /// <returns></returns>
         public Vector2Int GetRotationOffset(Direction dir)
         {
-            switch (dir)
+            return dir switch
             {
-                default:
-                    return new Vector2Int(0, 0);
-            }
+                _ => new Vector2Int(0, 0)
+            };
         }
 
         /// <summary>
@@ -67,6 +68,16 @@ namespace SS3D.Engine.Tile.TileRework
                         case Direction.East:
                             gridPositionList.Add(offset + new Vector2Int(-x, y));
                             break;
+                        case Direction.NorthEast:
+                            break;
+                        case Direction.SouthEast:
+                            break;
+                        case Direction.SouthWest:
+                            break;
+                        case Direction.NorthWest:
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException(nameof(dir), dir, null);
                     }
                 }
             }

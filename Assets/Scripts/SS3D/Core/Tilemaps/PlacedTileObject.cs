@@ -1,14 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using Mirror;
-using SS3D.Engine.Tiles;
 using SS3D.Engine.Tiles.Connections;
 using UnityEngine;
 
-namespace SS3D.Engine.Tile.TileRework
+namespace SS3D.Core.Tilemaps
 {
     /// <summary>
-    /// Class that is attached to every GameObject placed on the TileMap. 
+    /// Class that is attached to every GameObject placed on the Tilemap. 
     /// </summary>
     [RequireComponent(typeof(NetworkIdentity))]
     public class PlacedTileObject : MonoBehaviour
@@ -30,16 +29,15 @@ namespace SS3D.Engine.Tile.TileRework
         /// <param name="worldPosition"></param>
         /// <param name="origin"></param>
         /// <param name="dir"></param>
-        /// <param name="tileObjectSO"></param>
+        /// <param name="tileObjectSo"></param>
         /// <returns></returns>
-        public static PlacedTileObject Create(Vector3 worldPosition, Vector2Int origin, Direction dir, TileObjectSo tileObjectSO)
+        public static PlacedTileObject Create(Vector3 worldPosition, Vector2Int origin, Direction dir, TileObjectSo tileObjectSo)
         {
-
-            GameObject placedGameObject = Instantiate(tileObjectSO.prefab);
+            GameObject placedGameObject = Instantiate(tileObjectSo.prefab);
             placedGameObject.transform.SetPositionAndRotation(worldPosition, Quaternion.Euler(0, TileHelper.GetRotationAngle(dir), 0));
 
             // Alternative name is required for walls as they can occupy the same tile
-            if (TileHelper.ContainsSubLayers(tileObjectSO.layer))
+            if (TileHelper.ContainsSubLayers(tileObjectSo.layer))
                 placedGameObject.name += "_" + TileHelper.GetDirectionIndex(dir);
 
             PlacedTileObject placedObject = placedGameObject.GetComponent<PlacedTileObject>();
@@ -48,34 +46,39 @@ namespace SS3D.Engine.Tile.TileRework
                 placedObject = placedGameObject.AddComponent<PlacedTileObject>();
             }
 
-            placedObject.Setup(tileObjectSO, origin, dir);
+            placedObject.Setup(tileObjectSo, origin, dir);
 
-            if (NetworkServer.active)
+            if (!NetworkServer.active)
             {
-                if (!NetworkClient.prefabs.ContainsValue(placedGameObject))
-                    Debug.LogWarning("Prefab was not found in the Spawnable list. Please add it.");
-                NetworkServer.Spawn(placedGameObject);
+                return placedObject;
             }
+
+            if (!NetworkClient.prefabs.ContainsValue(placedGameObject))
+            {
+                Debug.LogWarning("Prefab was not found in the Spawnable list. Please add it.");
+            }
+
+            NetworkServer.Spawn(placedGameObject);
             return placedObject;
         }
 
-        private TileObjectSo tileObjectSO;
-        private Vector2Int origin;
-        private Direction dir;
-        private IAdjacencyConnector adjacencyConnector;
+        private TileObjectSo _tileObjectSo;
+        private Vector2Int _origin;
+        private Direction _direction;
+        private IAdjacencyConnector _adjacencyConnector;
 
         /// <summary>
         /// Set up a new PlacedTileObject.
         /// </summary>
-        /// <param name="tileObjectSO"></param>
-        /// <param name="origin"></param>
-        /// <param name="dir"></param>
-        public void Setup(TileObjectSo tileObjectSO, Vector2Int origin, Direction dir)
+        /// <param name="tileObjectSo"></param>
+        /// <param name="originPoint"></param>
+        /// <param name="direction"></param>
+        public void Setup(TileObjectSo tileObjectSo, Vector2Int originPoint, Direction direction)
         {
-            this.tileObjectSO = tileObjectSO;
-            this.origin = origin;
-            this.dir = dir;
-            adjacencyConnector = GetComponent<IAdjacencyConnector>();
+            _tileObjectSo = tileObjectSo;
+            _origin = originPoint;
+            _direction = direction;
+            _adjacencyConnector = GetComponent<IAdjacencyConnector>();
         }
 
         /// <summary>
@@ -84,7 +87,7 @@ namespace SS3D.Engine.Tile.TileRework
         /// <returns></returns>
         public List<Vector2Int> GetGridPositionList()
         {
-            return tileObjectSO.GetGridPositionList(origin, dir);
+            return _tileObjectSo.GetGridPositionList(_origin, _direction);
         }
 
         /// <summary>
@@ -92,14 +95,13 @@ namespace SS3D.Engine.Tile.TileRework
         /// </summary>
         public void DestroySelf()
         {
-            if (adjacencyConnector != null)
-                adjacencyConnector.CleanAdjacencies();
-            Destroy(gameObject);
+            _adjacencyConnector?.CleanAdjacencies();
+            DestroyImmediate(gameObject);
         }
 
         public override string ToString()
         {
-            return tileObjectSO.nameString;
+            return _tileObjectSo.nameString;
         }
 
         /// <summary>
@@ -110,9 +112,9 @@ namespace SS3D.Engine.Tile.TileRework
         {
             return new PlacedSaveObject
             {
-                tileObjectSOName = tileObjectSO.nameString,
-                origin = origin,
-                dir = dir,
+                tileObjectSOName = _tileObjectSo.nameString,
+                origin = _origin,
+                dir = _direction,
             };
         }
 
@@ -122,66 +124,51 @@ namespace SS3D.Engine.Tile.TileRework
         /// <returns></returns>
         public bool HasAdjacencyConnector()
         {
-            return adjacencyConnector != null;
+            return _adjacencyConnector != null;
         }
 
         /// <summary>
         /// Sends an update to the adjacency connector for all neighbouring objects.
         /// </summary>
         /// <param name="placedObjects"></param>
-        public void UpdateAllAdjacencies(PlacedTileObject[] placedObjects)
+        public void UpdateAllNeighbours(PlacedTileObject[] placedObjects)
         {
-            if (adjacencyConnector != null)
-                adjacencyConnector.UpdateAll(placedObjects);
+            _adjacencyConnector?.UpdateAll(placedObjects);
         }
 
         /// <summary>
         /// Sends an update to the adjacency connector one neigbouring object.
         /// </summary>
-        /// <param name="dir"></param>
+        /// <param name="direction"></param>
         /// <param name="placedNeighbour"></param>
-        public void UpdateSingleAdjacency(Direction dir, PlacedTileObject placedNeighbour)
+        public void UpdateSingleNeighbour(Direction direction, PlacedTileObject placedNeighbour)
         {
-            if (adjacencyConnector != null)
-                adjacencyConnector.UpdateSingle(dir, placedNeighbour);
+            _adjacencyConnector?.UpdateSingle(direction, placedNeighbour);
         }
 
         public TileObjectGenericType GetGenericType()
         {
-            if (tileObjectSO != null)
-            {
-                return tileObjectSO.genericType;
-            }
-
-            return TileObjectGenericType.None;
+            return _tileObjectSo != null ? _tileObjectSo.genericType : TileObjectGenericType.None;
         }
 
         public TileObjectSpecificType GetSpecificType()
         {
-            if (tileObjectSO != null)
-            {
-                return tileObjectSO.specificType;
-            }
-
-            return TileObjectSpecificType.None;
+            return _tileObjectSo != null ? _tileObjectSo.specificType : TileObjectSpecificType.None;
         }
 
         public string GetName()
         {
-            if (tileObjectSO != null)
-                return tileObjectSO.nameString;
-            else
-                return string.Empty;
+            return _tileObjectSo != null ? _tileObjectSo.nameString : string.Empty;
         }
 
         public Direction GetDirection()
         {
-            return dir;
+            return _direction;
         }
 
         public TileLayer GetLayer()
         {
-            return tileObjectSO.layer;
+            return _tileObjectSo.layer;
         }
     }
 }

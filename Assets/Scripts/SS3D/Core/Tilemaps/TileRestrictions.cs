@@ -1,11 +1,8 @@
 ﻿using System.Collections.Generic;
-using SS3D.Engine.Tiles;
 using UnityEngine;
 
-namespace SS3D.Engine.Tile.TileRework
+namespace SS3D.Core.Tilemaps
 {
-   
-
     /// <summary>
     /// Class used for setting certain restrictions when building objects on the tilemap. For example, most objects cannot be build if a plenum is missing.
     /// </summary>
@@ -34,7 +31,7 @@ namespace SS3D.Engine.Tile.TileRework
         /// <param name="tileObjectSO"></param>
         /// <param name="dir"></param>
         /// <returns></returns>
-        public static bool CanBuild(TileMap map, Vector3 position, int subLayerIndex, TileObjectSo tileObjectSO, Direction dir)
+        public static bool CanBuild(TilemapData map, Vector3 position, int subLayerIndex, TileObjectSo tileObjectSO, Direction dir)
         {
             TileManager tileManager = TileManager.Instance;
             TileLayer placedLayer = tileObjectSO.layer;
@@ -94,7 +91,7 @@ namespace SS3D.Engine.Tile.TileRework
         /// <param name="wallAttachment"></param>
         /// <param name="dir"></param>
         /// <returns></returns>
-        private static bool CanBuildWallAttachment(TileMap map, Vector3 position, TileObjectSo wallAttachment, Direction dir)
+        private static bool CanBuildWallAttachment(TilemapData map, Vector3 position, TileObjectSo wallAttachment, Direction dir)
         {
             TileObject wallObject = map.GetTileObject(TileLayer.Turf, position);
             // Cannot build when there isn't a wall
@@ -121,7 +118,7 @@ namespace SS3D.Engine.Tile.TileRework
         /// <param name="plenumAttachment"></param>
         /// <param name="dir"></param>
         /// <returns></returns>
-        private static bool CanBuildOnPlenum(TileMap map, Vector3 position, TileObjectSo plenumAttachment, Direction dir)
+        private static bool CanBuildOnPlenum(TilemapData map, Vector3 position, TileObjectSo plenumAttachment, Direction dir)
         {
             TileObject plenumObject = map.GetTileObject(TileLayer.Plenum, position);
 
@@ -148,7 +145,7 @@ namespace SS3D.Engine.Tile.TileRework
         /// <param name="layer"></param>
         /// <param name="position"></param>
         /// <returns></returns>
-        public static List<TileObject> GetToBeDestroyedObjects(TileMap map, TileLayer layer, Vector3 position)
+        public static List<TileObject> GetToBeDestroyedObjects(TilemapData map, TileLayer layer, Vector3 position)
         {
             List<TileObject> toBeDestroyedList = new List<TileObject>();
 

@@ -2,6 +2,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using SS3D.Core.Tilemaps;
+using SS3D.Core.Tilemaps.Connections.AdjacencyTypes;
 using SS3D.Engine.Tile.TileRework.Connections.AdjacencyTypes;
 using SS3D.Engine.Tiles;
 

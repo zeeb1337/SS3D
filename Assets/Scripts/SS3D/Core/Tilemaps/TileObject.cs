@@ -1,13 +1,11 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using SS3D.Engine.Tile.TileRework;
+using SS3D.Core.Tilemaps.Chunk;
 using UnityEngine;
 
-namespace SS3D.Engine.Tiles
+namespace SS3D.Core.Tilemaps
 {
     /// <summary>
-    /// Class for the base TileObject that is used by the TileMap.
+    /// Class for the base TileObject that is used by the Tilemap.
     /// </summary>
     public class TileObject
     {
@@ -23,19 +21,19 @@ namespace SS3D.Engine.Tiles
             public PlacedTileObject.PlacedSaveObject[] placedSaveObjects;
         }
 
-        private TileChunk map;
-        private TileLayer layer;
-        private int x;
-        private int y;
-        public PlacedTileObject[] placedObjects;
+        private readonly TileChunk _map;
+        private readonly TileLayer _layer;
+        private readonly int _x;
+        private readonly int _y;
+        public readonly PlacedTileObject[] PlacedObjects;
 
         public TileObject(TileChunk map, TileLayer layer, int x, int y, int subLayerSize)
         {
-            this.map = map;
-            this.layer = layer;
-            this.x = x;
-            this.y = y;
-            placedObjects = new PlacedTileObject[subLayerSize];
+            _map = map;
+            _layer = layer;
+            _x = x;
+            _y = y;
+            PlacedObjects = new PlacedTileObject[subLayerSize];
         }
 
         /// <summary>
@@ -45,8 +43,8 @@ namespace SS3D.Engine.Tiles
         /// <param name="subLayerIndex">Which sublayer to place the object</param>
         public void SetPlacedObject(PlacedTileObject placedObject, int subLayerIndex)
         {
-            placedObjects[subLayerIndex] = placedObject;
-            map.TriggerGridObjectChanged(x, y);
+            PlacedObjects[subLayerIndex] = placedObject;
+            _map.TriggerGridObjectChanged(_x, _y);
         }
 
         /// <summary>
@@ -55,11 +53,11 @@ namespace SS3D.Engine.Tiles
         /// <param name="subLayerIndex">Which sublayer to place the object</param>
         public void ClearPlacedObject(int subLayerIndex)
         {
-            if (placedObjects[subLayerIndex] != null)
-                placedObjects[subLayerIndex].DestroySelf();
+            if (PlacedObjects[subLayerIndex] != null)
+                PlacedObjects[subLayerIndex].DestroySelf();
 
-            placedObjects[subLayerIndex] = null;
-            map.TriggerGridObjectChanged(x, y);
+            PlacedObjects[subLayerIndex] = null;
+            _map.TriggerGridObjectChanged(_x, _y);
         }
 
         /// <summary>
@@ -67,10 +65,10 @@ namespace SS3D.Engine.Tiles
         /// </summary>
         public void ClearAllPlacedObjects()
         {
-            foreach (PlacedTileObject placedObject in placedObjects)
-                placedObject?.DestroySelf();
+            foreach (PlacedTileObject placedObject in PlacedObjects)
+                placedObject.DestroySelf();
 
-            map.TriggerGridObjectChanged(x, y);
+            _map.TriggerGridObjectChanged(_x, _y);
         }
 
         /// <summary>
@@ -80,7 +78,7 @@ namespace SS3D.Engine.Tiles
         /// <returns></returns>
         public PlacedTileObject GetPlacedObject(int subLayerIndex)
         {
-            return placedObjects[subLayerIndex];
+            return PlacedObjects[subLayerIndex];
         }
 
         /// <summary>
@@ -89,7 +87,7 @@ namespace SS3D.Engine.Tiles
         /// <returns></returns>
         public PlacedTileObject[] GetAllPlacedObjects()
         {
-            return placedObjects;
+            return PlacedObjects;
         }
 
         /// <summary>
@@ -99,7 +97,7 @@ namespace SS3D.Engine.Tiles
         /// <returns></returns>
         public bool IsEmpty(int subLayerIndex)
         {
-            return placedObjects[subLayerIndex] == null;
+            return PlacedObjects[subLayerIndex] == null;
         }
 
         /// <summary>
@@ -109,7 +107,7 @@ namespace SS3D.Engine.Tiles
         public bool IsCompletelyEmpty()
         {
             bool occupied = false;
-            for (int i = 0; i < TileHelper.GetSubLayerSize(layer); i++)
+            for (int i = 0; i < TileHelper.GetSubLayerSize(_layer); i++)
             {
                 occupied |= !IsEmpty(i);
             }
@@ -123,24 +121,24 @@ namespace SS3D.Engine.Tiles
         /// <returns></returns>
         public TileSaveObject Save()
         {
-            PlacedTileObject.PlacedSaveObject[] placedSaveObjects = new PlacedTileObject.PlacedSaveObject[placedObjects.Length];
-            for (int i = 0; i < placedObjects.Length; i++)
+            PlacedTileObject.PlacedSaveObject[] placedSaveObjects = new PlacedTileObject.PlacedSaveObject[PlacedObjects.Length];
+            for (int i = 0; i < PlacedObjects.Length; i++)
             {
                 // If we have a multi tile object, save only the instance where the origin is
-                if (placedObjects[i]?.GetGridPositionList().Count > 1)
+                if (PlacedObjects[i]?.GetGridPositionList().Count > 1)
                 {
-                    if (placedObjects[i].Save().origin != new Vector2Int(x, y))
+                    if (PlacedObjects[i].Save().origin != new Vector2Int(_x, _y))
                         continue;
                 }
 
-                placedSaveObjects[i] = placedObjects[i]?.Save();
+                placedSaveObjects[i] = PlacedObjects[i]?.Save();
             }
 
             return new TileSaveObject
             {
-                layer = layer,
-                x = x,
-                y = y,
+                layer = _layer,
+                x = _x,
+                y = _y,
                 placedSaveObjects = placedSaveObjects,
             };
         }

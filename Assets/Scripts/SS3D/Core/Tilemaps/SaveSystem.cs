@@ -1,144 +1,139 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using System.IO;
+﻿using System.IO;
 using UnityEngine;
 
-/// <summary>
-/// Class for the saving and loading of serialized objects. Uses Generics and can be adapted for any serializable object.
-/// </summary>
-public static class SaveSystem
+namespace SS3D.Core.Tilemaps
 {
-    private const string SAVE_EXTENSION = "txt";
-
-    private static readonly string SAVE_FOLDER = Application.streamingAssetsPath + "/Saves/";
-    private static bool isInit = false;
-
-    public static void Init()
+    /// <summary>
+    /// Class for the saving and loading of serialized objects. Uses Generics and can be adapted for any serializable object.
+    /// </summary>
+    public static class SaveSystem
     {
-        if (!isInit)
+        private const string SaveExtension = "txt";
+        private static readonly string SaveFolder = Application.streamingAssetsPath + "/Saves/";
+        private static bool IsInit = false;
+
+        public static void Init()
         {
-            isInit = true;
-            if (!Directory.Exists(SAVE_FOLDER))
+            if (IsInit)
             {
-                Directory.CreateDirectory(SAVE_FOLDER);
+                return;
+            }
+
+            IsInit = true;
+            if (!Directory.Exists(SaveFolder))
+            {
+                Directory.CreateDirectory(SaveFolder);
             }
         }
-    }
 
-    public static string[] GetSaveFiles()
-    {
-        Init();
-        return Directory.GetFiles(SAVE_FOLDER, string.Format("*.{0}", SAVE_EXTENSION));
-    }
-
-    public static void Save(string fileName, string saveString, bool overwrite)
-    {
-        Init();
-        string saveFileName = fileName;
-        if (!overwrite)
+        public static string[] GetSaveFiles()
         {
-            // Make sure the Save Number is unique so it doesnt overwrite a previous save file
-            int saveNumber = 1;
-            while (File.Exists(SAVE_FOLDER + saveFileName + "." + SAVE_EXTENSION))
-            {
-                saveNumber++;
-                saveFileName = fileName + "_" + saveNumber;
-            }
-            // saveFileName is unique
+            Init();
+            return Directory.GetFiles(SaveFolder, $"*.{SaveExtension}");
         }
-        File.WriteAllText(SAVE_FOLDER + saveFileName + "." + SAVE_EXTENSION, saveString);
-    }
 
-    public static string Load(string fileName)
-    {
-        Init();
-        if (File.Exists(SAVE_FOLDER + fileName + "." + SAVE_EXTENSION))
+        public static void Save(string fileName, string saveString, bool overrideFile)
         {
-            string saveString = File.ReadAllText(SAVE_FOLDER + fileName + "." + SAVE_EXTENSION);
+            Init();
+            string saveFileName = fileName;
+            if (!overrideFile)
+            {
+                // Make sure the Save Number is unique so it doesnt overwrite a previous save file
+                int saveNumber = 1;
+                while (File.Exists(SaveFolder + saveFileName + "." + SaveExtension))
+                {
+                    saveNumber++;
+                    saveFileName = fileName + "_" + saveNumber;
+                }
+                // saveFileName is unique
+            }
+            File.WriteAllText(SaveFolder + saveFileName + "." + SaveExtension, saveString);
+        }
+
+        public static string Load(string fileName)
+        {
+            Init();
+            if (!File.Exists(SaveFolder + fileName + "." + SaveExtension))
+            {
+                return null;
+            }
+
+            string saveString = File.ReadAllText(SaveFolder + fileName + "." + SaveExtension);
             return saveString;
         }
-        else
+
+        public static string LoadMostRecentFile()
         {
-            return null;
-        }
-    }
+            Init();
+            DirectoryInfo directoryInfo = new DirectoryInfo(SaveFolder);
 
-    public static string LoadMostRecentFile()
-    {
-        Init();
-        DirectoryInfo directoryInfo = new DirectoryInfo(SAVE_FOLDER);
+            // Get all save files
+            FileInfo[] saveFiles = directoryInfo.GetFiles("*." + SaveExtension);
 
-        // Get all save files
-        FileInfo[] saveFiles = directoryInfo.GetFiles("*." + SAVE_EXTENSION);
-
-        // Cycle through all save files and identify the most recent one
-        FileInfo mostRecentFile = null;
-        foreach (FileInfo fileInfo in saveFiles)
-        {
-            if (mostRecentFile == null)
+            // Cycle through all save files and identify the most recent one
+            FileInfo mostRecentFile = null;
+            foreach (FileInfo fileInfo in saveFiles)
             {
-                mostRecentFile = fileInfo;
-            }
-            else
-            {
-                if (fileInfo.LastWriteTime > mostRecentFile.LastWriteTime)
+                if (mostRecentFile == null)
                 {
                     mostRecentFile = fileInfo;
                 }
+                else
+                {
+                    if (fileInfo.LastWriteTime > mostRecentFile.LastWriteTime)
+                    {
+                        mostRecentFile = fileInfo;
+                    }
+                }
             }
-        }
 
-        // If theres a save file, load it, if not return null
-        if (mostRecentFile != null)
-        {
+            // If theres a save file, load it, if not return null
+            if (mostRecentFile == null)
+            {
+                return null;
+            }
+
             string saveString = File.ReadAllText(mostRecentFile.FullName);
             return saveString;
+
         }
-        else
+
+        public static void SaveObject(object saveObject)
         {
-            return null;
+            SaveObject("save", saveObject, false);
         }
-    }
 
-    public static void SaveObject(object saveObject)
-    {
-        SaveObject("save", saveObject, false);
-    }
-
-    public static void SaveObject(string fileName, object saveObject, bool overwrite)
-    {
-        Init();
-        string json = JsonUtility.ToJson(saveObject);
-        Save(fileName, json, overwrite);
-    }
-
-    public static TSaveObject LoadMostRecentObject<TSaveObject>()
-    {
-        Init();
-        string saveString = LoadMostRecentFile();
-        if (saveString != null)
+        public static void SaveObject(string fileName, object saveObject, bool overwrite)
         {
+            Init();
+            string json = JsonUtility.ToJson(saveObject);
+            Save(fileName, json, overwrite);
+        }
+
+        public static TSaveObject LoadMostRecentObject<TSaveObject>()
+        {
+            Init();
+            string saveString = LoadMostRecentFile();
+            if (saveString == null)
+            {
+                return default;
+            }
+
             TSaveObject saveObject = JsonUtility.FromJson<TSaveObject>(saveString);
             return saveObject;
         }
-        else
-        {
-            return default;
-        }
-    }
 
-    public static TSaveObject LoadObject<TSaveObject>(string fileName)
-    {
-        Init();
-        string saveString = Load(fileName);
-        if (saveString != null)
+        public static TSaveObject LoadObject<TSaveObject>(string fileName)
         {
+            Init();
+            string saveString = Load(fileName);
+            if (saveString == null)
+            {
+                return default;
+            }
+
             TSaveObject saveObject = JsonUtility.FromJson<TSaveObject>(saveString);
             return saveObject;
-        }
-        else
-        {
-            return default;
         }
     }
 }

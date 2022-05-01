@@ -1,4 +1,5 @@
-﻿using SS3D.Engine.Tiles;
+﻿using SS3D.Core.Tilemaps;
+using SS3D.Engine.Tiles;
 using UnityEngine;
 
 namespace SS3D.Engine.Tile.TileRework.Connections
