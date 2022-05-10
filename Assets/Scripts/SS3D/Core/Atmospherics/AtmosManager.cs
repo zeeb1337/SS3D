@@ -20,17 +20,20 @@ namespace SS3D.Core.Atmospherics
     {
         [SerializeField] private bool _simulating;
 
-        [Header("Debug")]
-        public bool DrawDebug;
-        public bool DrawTiles = true;
-        public bool DrawAll = true;
-        public bool DrawWall = true;
-        public bool ShowMessages;
-        public bool IsAddingGas;
-        public bool ShowPipes;
-        public PipeLayer SelectedPipeLayer = PipeLayer.Upper;
+        [Header("Debug view")]
+        [SerializeField] private AtmosDebugViewType _drawAtmosDebugView = AtmosDebugViewType.Pressure;
 
-        private AtmosGasses _gasToAdd = AtmosGasses.Oxygen;
+        [Header("Debug")]
+        [SerializeField] private  bool _drawDebug;
+        [SerializeField] private  bool _drawTiles = true;
+        [SerializeField] private  bool _drawAll = true;
+        [SerializeField] private  bool _drawWall = true;
+        [SerializeField] private  bool _showMessages;
+        [SerializeField] private  bool _isAddingGas;
+        [SerializeField] private  bool _showPipes;
+        [SerializeField] private  PipeLayer _selectedPipeLayer = PipeLayer.Upper;
+
+        [SerializeField] private  AtmosGasses _gasToAdd = AtmosGasses.Oxygen;
 
         private TileManager _tileManager;
         private List<Tile> _tiles;
@@ -42,7 +45,6 @@ namespace SS3D.Core.Atmospherics
         private int _activeTiles;
         private float _lastStep;
         private float _lastClick;
-        private AtmosDebugViewType _drawAtmosDebugView = AtmosDebugViewType.Pressure;
 
         // Performance markers
         private static ProfilerMarker SPreparePerfMarker = new("Atmospherics.Initialize");
@@ -77,7 +79,7 @@ namespace SS3D.Core.Atmospherics
         {
             SPreparePerfMarker.Begin();
 
-            DrawDebug = false;
+            _drawDebug = false;
             Debug.Log($"[{typeof(AtmosManager)}] - Initializing atmos tiles");
 
             // Initialize all tiles with atmos
@@ -206,7 +208,7 @@ namespace SS3D.Core.Atmospherics
             if (Time.fixedTime >= _lastStep)
             {
                 _activeTiles = Step();
-                if (ShowMessages)
+                if (_showMessages)
                 {
                     Debug.Log("Atmos loop took: " + (Time.fixedTime - _lastStep) + " seconds, simulating " + _activeTiles + " atmos tiles. Fixed update rate: " + _updateRate);
                 }
@@ -216,7 +218,7 @@ namespace SS3D.Core.Atmospherics
             }
 
             // Display atmos tile contents if the editor window is open
-            if (!DrawDebug)
+            if (!_drawDebug)
             {
                 return;
             }
@@ -238,9 +240,9 @@ namespace SS3D.Core.Atmospherics
         {
             if (Input.GetMouseButton(0))
             {
-                if (DrawTiles)
+                if (_drawTiles)
                 {
-                    if (IsAddingGas)
+                    if (_isAddingGas)
                     {
                         tile.AtmosObject.AddGas(_gasToAdd, 60f);
                     }
@@ -256,19 +258,19 @@ namespace SS3D.Core.Atmospherics
                         _lastClick = Time.fixedTime;
                     }
                 }
-                else if (ShowPipes)
+                else if (_showPipes)
                 {
                     PipeObject[] pipes = tile.GetComponentsInChildren<PipeObject>();
                     bool pipeLayerFound = false;
                     foreach (PipeObject pipe in pipes)
                     {
-                        if (!pipe || pipe.layer != SelectedPipeLayer)
+                        if (!pipe || pipe.layer != _selectedPipeLayer)
                         {
                             continue;
                         }
 
                         pipeLayerFound = true;
-                        if (IsAddingGas)
+                        if (_isAddingGas)
                         {
                             pipe.AddGas(_gasToAdd, 30f);
                         }
@@ -291,13 +293,13 @@ namespace SS3D.Core.Atmospherics
                         return;
                     }
 
-                    Debug.Log("No pipe found on the clicked tile for layer " + SelectedPipeLayer.ToString());
+                    Debug.Log("No pipe found on the clicked tile for layer " + _selectedPipeLayer.ToString());
                     _lastClick = Time.fixedTime;
                 }
             }
             else if (Input.GetKeyDown(KeyCode.Escape))
             {
-                IsAddingGas = false;
+                _isAddingGas = false;
             }
         }
 
@@ -462,7 +464,7 @@ namespace SS3D.Core.Atmospherics
 
         private void ProcessDebug()
         {
-            if (!DrawDebug)
+            if (!_drawDebug)
             {
                 return;
             }
@@ -490,7 +492,7 @@ namespace SS3D.Core.Atmospherics
                 _ => new Color(0, 0, 0, 1)
             };
 
-            if (!DrawTiles)
+            if (!_drawTiles)
             {
                 return;
             }
@@ -499,7 +501,7 @@ namespace SS3D.Core.Atmospherics
             {
                 Gizmos.color = new Color(0.2f, 0.2f, 0.2f, 1f);
                 // Draw black cube where atmos flow is blocked
-                if (DrawWall)
+                if (_drawWall)
                 {
                     Gizmos.DrawCube(new Vector3(x, 0.5f, y), new Vector3(1, 2, 1));
                 }
@@ -524,7 +526,7 @@ namespace SS3D.Core.Atmospherics
                         }
 
                         Gizmos.color = colors[k] - state;
-                        if (!DrawAll && k != 3)
+                        if (!_drawAll && k != 3)
                         {
                             continue;
                         }
@@ -538,7 +540,7 @@ namespace SS3D.Core.Atmospherics
                     break;
                 case AtmosDebugViewType.Pressure:
                     pressure = tile.AtmosObject.GetPressure() / 160f;
-                    if (!DrawAll && tile.AtmosObject.GetState() != AtmosStates.Active)
+                    if (!_drawAll && tile.AtmosObject.GetState() != AtmosStates.Active)
                     {
                        return;
                     }
