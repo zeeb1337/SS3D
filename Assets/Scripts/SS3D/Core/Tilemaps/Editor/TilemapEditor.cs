@@ -22,10 +22,10 @@ namespace SS3D.Core.Tilemaps.Editor
         private Vector2 _scrollPositionTile;
         private Vector2 _scrollPositionSelection;
 
-        private readonly List<TileObjectSo> _assetList = new List<TileObjectSo>();
-        private readonly List<GUIContent> _assetIcons = new List<GUIContent>();
-        private readonly List<TileObjectSo> _assetDisplayList = new List<TileObjectSo>();
-        private readonly List<GUIContent> _assetDisplayIcons = new List<GUIContent>();
+        private readonly List<TileObjectSo> _assetList = new();
+        private readonly List<GUIContent> _assetIcons = new();
+        private readonly List<TileObjectSo> _assetDisplayList = new();
+        private readonly List<GUIContent> _assetDisplayIcons = new();
         private int _assetIndex;
         private bool _loadingTextures;
 
@@ -115,7 +115,6 @@ namespace SS3D.Core.Tilemaps.Editor
         {
             if (_madeChanges)
             {
-                DisplaySaveWarning();
                 _tileManager.LoadAll(false);
             }   
 
@@ -179,7 +178,6 @@ namespace SS3D.Core.Tilemaps.Editor
                 {
                     if (_madeChanges)
                     {
-                        DisplaySaveWarning();
                         _madeChanges = false;
                     }
                     _tileManager.LoadAll(false);
@@ -316,83 +314,84 @@ namespace SS3D.Core.Tilemaps.Editor
                 }
             }
 
-            if (Event.current.type == EventType.KeyDown && Event.current.keyCode == KeyCode.R)
+            switch (Event.current.type)
             {
-                _selectedDir = TileHelper.GetNextDir(_selectedDir);
-
-                // Cannot rotate if an Adjacency Connector is present
-                if (_ghostObject.GetComponent<IAdjacencyConnector>() != null)
+                case EventType.KeyDown when Event.current.keyCode == KeyCode.R:
                 {
-                    _selectedDir = Direction.North;
-                    Debug.LogWarning("Tried to rotate an object that has an adjacency connector. Defaulting to North.");
-                }
+                    _selectedDir = TileHelper.GetNextDir(_selectedDir);
 
-                _ghostObject.transform.rotation = Quaternion.Euler(0, TileHelper.GetRotationAngle(_selectedDir), 0);
-            }
-
-            // Dragging handle - hold shift and drag mouse to paint area
-            else if ((Event.current.type == EventType.MouseDown || Event.current.type == EventType.MouseDrag) && Event.current.shift && Event.current.button == 0)
-            {
-                Vector3Int dragPosition = new Vector3Int(Mathf.RoundToInt(snappedPosition.x), Mathf.RoundToInt(snappedPosition.z), 0);
-                if (_dragHandler == null)
-                {
-                    if (_selectedObjectSo.GetGridPositionList(Vector2Int.zero, _selectedDir).Count > 1)
+                    // Cannot rotate if an Adjacency Connector is present
+                    if (_ghostObject.GetComponent<IAdjacencyConnector>() != null)
                     {
-                        Debug.LogWarning("Drag handler is not supported with multi-tile objects.");
-                        return;
+                        _selectedDir = Direction.North;
+                        Debug.LogWarning("Tried to rotate an object that has an adjacency connector. Defaulting to North.");
                     }
 
-                    DestroyGhost();
+                    _ghostObject.transform.rotation = Quaternion.Euler(0, TileHelper.GetRotationAngle(_selectedDir), 0);
+                    break;
+                }
+                // Dragging handle - hold shift and drag mouse to paint area
+                case EventType.MouseDown or EventType.MouseDrag when Event.current.shift && Event.current.button == 0:
+                {
+                    Vector3Int dragPosition = new Vector3Int(Mathf.RoundToInt(snappedPosition.x), Mathf.RoundToInt(snappedPosition.z), 0);
+                    if (_dragHandler == null)
+                    {
+                        if (_selectedObjectSo.GetGridPositionList(Vector2Int.zero, _selectedDir).Count > 1)
+                        {
+                            Debug.LogWarning("Drag handler is not supported with multi-tile objects.");
+                            return;
+                        }
+
+                        DestroyGhost();
                     
-                    _dragHandler = new TileDragHandler(_tileManager, this, GetCurrentMap(), GetSubLayerIndex(), _selectedObjectSo, _selectedDir, dragPosition)
+                        _dragHandler = new TileDragHandler(_tileManager, this, GetCurrentMap(), GetSubLayerIndex(), _selectedObjectSo, _selectedDir, dragPosition)
                         {
                             SelectedLayer = _selectedLayer,
                             AllowOverwrite = _overwriteAllowed
                         };
 
-                    if (_deleteTiles)
-                    {
-                        _dragHandler.DeleteTiles = true;
+                        if (_deleteTiles)
+                        {
+                            _dragHandler.DeleteTiles = true;
+                        }
                     }
+                    _dragHandler.HandleDrag(dragPosition);
+                    break;
                 }
-                _dragHandler.HandleDrag(dragPosition);
-            }
-            else if ((Event.current.type == EventType.MouseUp && Event.current.button == 0) && _dragHandler != null)
-            {
-                _madeChanges = true;
-                _dragHandler.EndDrag();
-                _dragHandler = null;
+                case EventType.MouseUp when Event.current.button == 0 && _dragHandler != null:
+                    _madeChanges = true;
+                    _dragHandler.EndDrag();
+                    _dragHandler = null;
 
-                // Reshow the normal tile selector
-                CreateGhost();
-            }
-
-            else if ((Event.current.type == EventType.MouseDown || Event.current.type == EventType.MouseDrag) && Event.current.button == 0
-                && (EditorApplication.timeSinceStartup - _lastPlacementTime > 0.5 
-                || _lastPlacement != snappedPosition))
-            {
-                _madeChanges = true;
-                _lastPlacementTime = EditorApplication.timeSinceStartup;
-                _lastPlacement = snappedPosition;
-                if (_deleteTiles)
+                    // Reshow the normal tile selector
+                    CreateGhost();
+                    break;
+                case EventType.MouseDown or EventType.MouseDrag when Event.current.button == 0 && (EditorApplication.timeSinceStartup - _lastPlacementTime > 0.5 
+                                                                                                   || _lastPlacement != snappedPosition):
                 {
-                    _tileManager.ClearTileObject(GetCurrentMap(), _selectedLayer, GetSubLayerIndex(), snappedPosition);
-                }
-                else
-                {
-                    if (_overwriteAllowed)
+                    _madeChanges = true;
+                    _lastPlacementTime = EditorApplication.timeSinceStartup;
+                    _lastPlacement = snappedPosition;
+                    if (_deleteTiles)
                     {
                         _tileManager.ClearTileObject(GetCurrentMap(), _selectedLayer, GetSubLayerIndex(), snappedPosition);
                     }
-                    _tileManager.SetTileObject(GetCurrentMap(), GetSubLayerIndex(), _selectedObjectSo, snappedPosition, _selectedDir);
-                }
-            }
+                    else
+                    {
+                        if (_overwriteAllowed)
+                        {
+                            _tileManager.ClearTileObject(GetCurrentMap(), _selectedLayer, GetSubLayerIndex(), snappedPosition);
+                        }
+                        _tileManager.SetTileObject(GetCurrentMap(), GetSubLayerIndex(), _selectedObjectSo, snappedPosition, _selectedDir);
+                    }
 
-            else if (Event.current.type == EventType.KeyDown && Event.current.keyCode == KeyCode.Escape)
-            {
-                _selectedDir = Direction.North;
-                _enablePlacement = false;
-                DestroyGhost();
+                    break;
+                }
+                case EventType.KeyDown when Event.current.keyCode == KeyCode.Escape:
+                    _selectedDir = Direction.North;
+                    _enablePlacement = false;
+                    DestroyGhost();
+                    break;
             }
         }
 
@@ -432,7 +431,7 @@ namespace SS3D.Core.Tilemaps.Editor
             GUI.color = Color.white;
             GUILayout.Label("Left click to place an object");
             GUILayout.Label("Press 'R' to rotate an object");
-            GUILayout.Label("Current rotation: " + _selectedDir.ToString());
+            GUILayout.Label($"Current rotation: {_selectedDir}");
             GUILayout.Label("Press Escape to leave placement mode");
             
             GUILayout.EndArea();
@@ -454,7 +453,7 @@ namespace SS3D.Core.Tilemaps.Editor
 
         private TilemapData GetCurrentMap()
         {
-            return _tileManager.GetTileMaps()[_selectedTileMapIndex];
+            return _tileManager != null ? _tileManager.GetTileMaps()[_selectedTileMapIndex] : null;
         }
 
         private void FillGridOptions(TilemapData map)

@@ -8,6 +8,9 @@ namespace SS3D.Core.Helper.Intro
     /// </summary>
     public sealed class IntroUIHelper : MonoBehaviour
     {
+        [Header("Root")] 
+        [SerializeField] private GameObject _uiRoot;
+
         [Header("UI")]
         [SerializeField] private CanvasGroup _introUiFade;
         [SerializeField] private CanvasGroup _connectionUiFade;
@@ -31,6 +34,7 @@ namespace SS3D.Core.Helper.Intro
             {
                 Destroy(_temporaryAudioSource);
                 ApplicationStateManager.Instance.InitializeApplication();
+                Destroy(gameObject);
             }
             else
             {

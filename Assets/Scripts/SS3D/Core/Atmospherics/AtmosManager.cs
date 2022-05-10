@@ -16,9 +16,10 @@ namespace SS3D.Core.Atmospherics
     /// <summary>
     /// Manages the atmos system
     /// </summary>
-    [ExecuteAlways]
     public class AtmosManager : MonoBehaviour
     {
+        [SerializeField] private bool _simulating;
+
         [Header("Debug")]
         public bool DrawDebug;
         public bool DrawTiles = true;
@@ -44,11 +45,13 @@ namespace SS3D.Core.Atmospherics
         private AtmosDebugViewType _drawAtmosDebugView = AtmosDebugViewType.Pressure;
 
         // Performance markers
-        private static ProfilerMarker SPreparePerfMarker = new ProfilerMarker("Atmospherics.Initialize");
-        private static ProfilerMarker SStepPerfMarker = new ProfilerMarker("Atmospherics.Step");
+        private static ProfilerMarker SPreparePerfMarker = new("Atmospherics.Initialize");
+        private static ProfilerMarker SStepPerfMarker = new("Atmospherics.Step");
 
         private void Start()
         {
+            _simulating = false;
+
             // Atmos manager only runs on server
             if (!Mirror.NetworkServer.active)
             {
@@ -62,22 +65,23 @@ namespace SS3D.Core.Atmospherics
                 }
                 #endif
             }
-            
-            _tileManager = FindObjectOfType<TileManager>();
+
+            _tileManager = TileManager.Instance;
             _pipeTiles = new List<PipeObject>();
             _deviceTiles = new List<IAtmosLoop>();
-            Initialize();
+            
+            TileManager.TileManagerLoaded += Initialize;
         }
 
-        private void Initialize()
+        private void Initialize(List<Tile> tiles)
         {
             SPreparePerfMarker.Begin();
 
             DrawDebug = false;
-            Debug.Log("AtmosManager: Initializing tiles");
+            Debug.Log($"[{typeof(AtmosManager)}] - Initializing atmos tiles");
 
             // Initialize all tiles with atmos
-            _tiles = _tileManager.Tiles;
+            _tiles = tiles;
 
             int tilesInstantiated = 0;
             int pipesInstantiated = 0;
@@ -96,22 +100,34 @@ namespace SS3D.Core.Atmospherics
                 // Top
                 Tuple<int, int> tileCoordinates = DirectionHelper.ToCardinalVector(Direction.North);
                 Tile tileNeighbour = _tileManager.GetTile(tileCoordinates.Item1 + x, tileCoordinates.Item2 + y);
-                atmosObject.SetTileNeighbour(tileNeighbour.AtmosObject, 0);
+                if (tileNeighbour != null)
+                {
+                    atmosObject.SetTileNeighbour(tileNeighbour.AtmosObject, 0);
+                }
 
                 // Bottom
                 Tuple<int, int> tileCoordinates2 = DirectionHelper.ToCardinalVector(Direction.South);
                 Tile tileNeighbour2 = _tileManager.GetTile(tileCoordinates2.Item1 + x, tileCoordinates2.Item2 + y);
-                atmosObject.SetTileNeighbour(tileNeighbour2.AtmosObject, 1);
+                if (tileNeighbour2 != null)
+                {
+                    atmosObject.SetTileNeighbour(tileNeighbour2.AtmosObject, 1);
+                }
 
                 // Left
                 Tuple<int, int> tileCoordinates3 = DirectionHelper.ToCardinalVector(Direction.West);
                 Tile tileNeighbour3 = _tileManager.GetTile(tileCoordinates3.Item1 + x, tileCoordinates3.Item2 + y);
-                atmosObject.SetTileNeighbour(tileNeighbour3.AtmosObject, 2);
+                if (tileNeighbour3 != null)
+                {
+                    atmosObject.SetTileNeighbour(tileNeighbour3.AtmosObject, 2);
+                }
 
                 // Right
                 Tuple<int, int> tileCoordinates4 = DirectionHelper.ToCardinalVector(Direction.East);
                 Tile tileNeighbour4 = _tileManager.GetTile(tileCoordinates4.Item1 + x, tileCoordinates4.Item2 + y);
-                atmosObject.SetTileNeighbour(tileNeighbour4.AtmosObject, 3);
+                if (tileNeighbour4 != null)
+                {
+                    atmosObject.SetTileNeighbour(tileNeighbour4.AtmosObject, 3);
+                }
 
                 _atmosObjects.Add(tile.AtmosObject);
 
@@ -166,14 +182,21 @@ namespace SS3D.Core.Atmospherics
                 // tile.atmos.ValidateVacuum();
                 // TODO: Set atmos object blocked
             }
-            Debug.Log($"AtmosManager: Finished initializing {tilesInstantiated} tiles, {pipesInstantiated} pipes and {devicesInstantiated} devices");
+
+            _simulating = true;
 
             _lastStep = Time.fixedTime;
             SPreparePerfMarker.End();
+            Debug.Log($"AtmosManager: Finished initializing {tilesInstantiated} tiles, {pipesInstantiated} pipes and {devicesInstantiated} devices");
         }
 
         private void Update()
         {
+            if (!_simulating)
+            {
+                return;
+            }
+
             #if UNITY_EDITOR
             if (!EditorApplication.isPlaying)
             {
@@ -200,6 +223,8 @@ namespace SS3D.Core.Atmospherics
 
             Vector3 hit = GetMousePosition();
             Vector2Int position = new Vector2Int((int) hit.x, (int) hit.z);
+
+            Debug.Log($"[{typeof(AtmosManager)}] - Trying to get tile on {position.x} - {position.y}");
             Tile tile = _tileManager.GetTile(position);
 
             if (tile == null || !(Time.fixedTime > _lastClick + 1))

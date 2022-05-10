@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Linq;
 using Mirror;
-using SS3D.Core.Tilemaps;
-using SS3D.Engine.Atmospherics;
 using Unity.Profiling;
 using UnityEngine;
 
@@ -14,29 +12,31 @@ namespace SS3D.Core.Atmospherics
     public class AtmosObject : NetworkBehaviour
     {
         private AtmosManager _manager;
-        private readonly AtmosContainer _atmosContainer = new AtmosContainer();
 
-        private float[] _tileFlux = { 0f, 0f, 0f, 0f };
-        private Vector2 _velocity = Vector2.zero;
-        private AtmosStates _state = AtmosStates.Active;
+        [Header("Debug Info")]
+        [SerializeField] private float[] _tileFlux = { 0f, 0f, 0f, 0f };
+        [SerializeField] private Vector2 _velocity = Vector2.zero;
+        [SerializeField] private AtmosStates _state = AtmosStates.Active;
+        [SerializeField] private bool _tempSetting;
+
+        private readonly bool[] _activeDirection = 
+        {
+            false,  // Top AtmosObject active
+            false,  // Bottom AtmosObject active
+            false,  // Left AtmosObject active
+            false   // Right AtmosObject active
+        };
+
+        private readonly AtmosContainer _atmosContainer = new();
         private readonly AtmosObject[] _atmosNeighbours = { null, null, null, null };
-        private bool _tempSetting;
-
-        private readonly bool[] _activeDirection = {
-                false,  // Top AtmosObject active
-                false,  // Bottom AtmosObject active
-                false,  // Left AtmosObject active
-                false   // Right AtmosObject active
-            };
-
         private readonly float[] _neighbourFlux = new float[4];
         private readonly float[] _difference = new float[AtmosGas.GasesCount];
 
         // Performance makers
-        private static ProfilerMarker SCalculateFluxPerfMarker = new ProfilerMarker("AtmosObject.CalculateFlux");
-        private static ProfilerMarker SCalculateFluxOnePerfMarker = new ProfilerMarker("AtmosObject.CalculateFlux.One");
-        private static ProfilerMarker SSimulateFluxPerfMarker = new ProfilerMarker("AtmosObject.SimulateFlux");
-        private static ProfilerMarker SSimulateMixingPerfMarker = new ProfilerMarker("AtmosObject.SimulateMixing");
+        private static ProfilerMarker SCalculateFluxPerfMarker = new("AtmosObject.CalculateFlux");
+        private static ProfilerMarker SCalculateFluxOnePerfMarker = new("AtmosObject.CalculateFlux.One");
+        private static ProfilerMarker SSimulateFluxPerfMarker = new("AtmosObject.SimulateFlux");
+        private static ProfilerMarker SSimulateMixingPerfMarker = new("AtmosObject.SimulateMixing");
 
         public void SetTileNeighbour(AtmosObject neighbour, int index)
         {
@@ -49,7 +49,10 @@ namespace SS3D.Core.Atmospherics
             foreach (AtmosObject atmosObject in _atmosNeighbours)
             {
                 if (atmosObject != null)
+                {
                     _atmosNeighbours[i] = atmosObject;
+                }
+
                 i++;
             }
         }
@@ -71,7 +74,7 @@ namespace SS3D.Core.Atmospherics
 
         public void RemoveFlux()
         {
-            _tileFlux = new float[]{ 0f, 0f, 0f, 0f} ;
+            _tileFlux = new[]{ 0f, 0f, 0f, 0f} ;
         }
 
         public void AddGas(AtmosGasses gas, float amount)
@@ -183,10 +186,9 @@ namespace SS3D.Core.Atmospherics
 
         public bool CheckOverPressure()
         {
-            return _state == AtmosStates.Blocked 
-                   && _atmosNeighbours.Any(tile => tile != null && tile._atmosContainer.GetPressure() > 2000);
+            return _state == AtmosStates.Blocked && _atmosNeighbours.Any(tile => tile != null && tile._atmosContainer.GetPressure() > 2000);
         }
-
+    
         public void CalculateFlux()
         {
             SCalculateFluxPerfMarker.Begin();
@@ -242,7 +244,7 @@ namespace SS3D.Core.Atmospherics
                 }
             }
 
-            if (_state == AtmosStates.SemiActive || _state == AtmosStates.Active)
+            if (_state is AtmosStates.SemiActive or AtmosStates.Active)
             {
                 SimulateMixing();
             }
@@ -280,8 +282,10 @@ namespace SS3D.Core.Atmospherics
                             {
                                 _activeDirection[k] = false;
                             }
+
                             _atmosContainer.RemoveGas(i, factor);
                         }
+
                         k++;
                     }
                 }
@@ -289,7 +293,7 @@ namespace SS3D.Core.Atmospherics
                 int j = 0;
                 foreach (AtmosObject tile in _atmosNeighbours)
                 {
-                    if (_activeDirection[j] == true)
+                    if (_activeDirection[j])
                     {
                         float difference = (_atmosContainer.GetTemperature() - tile._atmosContainer.GetTemperature()) * AtmosGas.ThermalBase * _atmosContainer.Volume;
 
@@ -300,23 +304,33 @@ namespace SS3D.Core.Atmospherics
                             _tempSetting = true;
                         }
                     }
+
                     j++;
                 }
 
                 float fluxFromLeft = 0;
                 if (_atmosNeighbours[2] != null)
+                {
                     fluxFromLeft = _atmosNeighbours[2]._tileFlux[3];
+                }
+
                 float fluxFromRight = 0;
                 if (_atmosNeighbours[3] != null)
+                {
                     fluxFromLeft = _atmosNeighbours[3]._tileFlux[2];
+                }
 
                 float fluxFromTop = 0;
                 if (_atmosNeighbours[0] != null)
+                {
                     fluxFromTop = _atmosNeighbours[0]._tileFlux[1];
+                }
 
                 float fluxFromBottom = 0;
                 if (_atmosNeighbours[1] != null)
+                {
                     fluxFromBottom = _atmosNeighbours[1]._tileFlux[0];
+                }
 
                 float velHorizontal = _tileFlux[3] - fluxFromLeft - _tileFlux[2] + fluxFromRight;
                 float velVertical = _tileFlux[0] - fluxFromTop - _tileFlux[1] + fluxFromBottom;
@@ -328,13 +342,16 @@ namespace SS3D.Core.Atmospherics
                 _velocity = Vector2.zero;
                 SimulateMixing();
             }
+
             SSimulateFluxPerfMarker.End();
         }
 
         public void SimulateMixing()
         {
             if (AtmosHelper.ArrayZero(_atmosContainer.GetGasses(), AtmosGas.MixRate))
+            {
                 return;
+            }
 
             SSimulateMixingPerfMarker.Begin();
             bool mixed = false;
@@ -373,7 +390,9 @@ namespace SS3D.Core.Atmospherics
                     }
                     // For small difference, we just split the diff
                     if (_difference[i] < 0.05f)
+                    {
                         _difference[i] = (_atmosContainer.GetGasses()[i] - atmosObject.GetAtmosContainer().GetGasses()[i]) / 2f;
+                    }
 
                     // Increase neighbouring tiles moles
                     atmosObject.GetAtmosContainer().AddGas(i, _difference[i]);

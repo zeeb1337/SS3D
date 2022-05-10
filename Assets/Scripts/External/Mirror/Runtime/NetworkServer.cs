@@ -1171,7 +1171,7 @@ namespace Mirror
             // only if server active
             if (!active)
                 return false;
-
+    
             NetworkIdentity[] identities = Resources.FindObjectsOfTypeAll<NetworkIdentity>();
 
             // first pass: activate all scene objects
@@ -1180,7 +1180,7 @@ namespace Mirror
                 if (ValidateSceneObject(identity))
                 {
                     // Debug.Log($"SpawnObjects sceneId:{identity.sceneId:X} name:{identity.gameObject.name}");
-                    identity.gameObject.SetActive(true);
+                     identity.gameObject.SetActive(true);
 
                     // fix https://github.com/vis2k/Mirror/issues/2778:
                     // -> SetActive(true) does NOT call Awake() if the parent

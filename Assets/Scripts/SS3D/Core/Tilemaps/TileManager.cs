@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Mirror;
+using SS3D.Data.Messages;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -20,22 +22,33 @@ namespace SS3D.Core.Tilemaps
     /// 
     /// See MultiAdjacencyConnector.cs as an example.
     /// </summary>
-    [ExecuteAlways]
-    public class TileManager : MonoBehaviour
+    public class TileManager : NetworkBehaviour
     {
         public static TileManager Instance;
 
-        // events
-        // TODO: Move those to service locator
-        public static event Action TileManagerLoaded;
+        // events TODO: Move those to service locator
+        public static event Action<List<Tile>> TileManagerLoaded;
+
+        [Header("Savefile")] 
+        [SerializeField] private string _saveFileName = "tilemaps";
+
+        [Header("Config")] 
+        [SerializeField] private GameObject _tilePrefab;
+        [SerializeField] private float _mapSize;
+
+        [Header("Map stuff")]
+        [SerializeField] private Transform _tileParent;
+        [SerializeField] private List<TilemapData> _mapList;
+        [SerializeField] private List<Tile> _tiles;
 
         private static TileObjectSo[] TileObjectSOs;
-        private string _saveFileName = "tilemaps";
-        private List<TilemapData> _mapList;
-        private List<Tile> _tiles;
-
         public bool IsInitialized { get; private set; }
         public List<Tile> Tiles => _tiles;
+
+        private void Start()
+        {
+            Initialize();
+        }
 
         private void Initialize()
         {
@@ -52,21 +65,83 @@ namespace SS3D.Core.Tilemaps
             _saveFileName = scene.name;
 
             // Finding all TileObjectSOs differs whether we are in the editor or playing
-            #if UNITY_EDITOR
+#if UNITY_EDITOR
             // We have to ensure that all objects used are loaded beforehand
             string[] guids = AssetDatabase.FindAssets($"t:{typeof(TileObjectSo)}");
 
             TileObjectSOs = guids.Select(AssetDatabase.GUIDToAssetPath).Select(AssetDatabase.LoadAssetAtPath<TileObjectSo>).ToArray();
-            #else
+#else
                 Resources.LoadAll<TileObjectSo>("");
                 tileObjectSOs = Resources.FindObjectsOfTypeAll<TileObjectSo>();
-            #endif
+#endif
 
             LoadAll(true);
+            InitializeTiles();
             UpdateAllNeighbours();
+
             IsInitialized = true;
 
-            TileManagerLoaded?.Invoke();
+            TileManagerLoaded?.Invoke(_tiles);
+        }
+
+        [ContextMenu("Create tiles")]
+        public void InitializeTiles()
+        {
+            Debug.Log($"[{typeof(TileManager)}] - Creating tiles");
+
+            ClearTiles();
+
+            if (_tileParent == null)
+            {
+                _tileParent = new GameObject().transform;
+                _tileParent.name = "Tiles";
+                _tileParent.SetParent(transform);
+            }
+
+            for (int i = (int)-(_mapSize / 2); i < (_mapSize / 2); i++)
+            {
+                for (int j = (int)-(_mapSize / 2); j < (_mapSize / 2); j++)
+                {
+                    Vector3 tilePosition = new Vector3(i, 0, j);
+                    CreateTile(tilePosition);
+                }
+            }
+            Debug.Log($"[{typeof(TileManager)}] - {_mapSize*_mapSize} tiles created");
+        }
+
+        [ContextMenu("Remove all tiles")]
+        private void ClearTiles()
+        {
+            int tileCount = _tiles.Count;
+
+            if (_tiles.Count == 0)
+            {
+                return;
+            }
+
+            Debug.Log($"[{typeof(TileManager)}] - Removing all tiles");
+            foreach (Tile tile in _tiles)
+            {
+                DestroyImmediate(tile.gameObject);
+            }
+            _tiles.Clear();
+
+            Debug.Log($"[{typeof(TileManager)}] - {tileCount} tiles removed");
+        }
+
+        private void CreateTile(Vector3 tilePosition)
+        {
+            GameObject tileInstance = Instantiate(_tilePrefab, tilePosition, Quaternion.identity, _tileParent);
+            NetworkServer.Spawn(tileInstance);
+
+            Tile tile = tileInstance.GetComponent<Tile>();
+
+            Vector2Int position = new Vector2Int((int)tilePosition.x, (int)tilePosition.z);
+
+            tileInstance.name = $"Tile [{position.x}] [{position.y}]";
+            tile.Initialize(position);
+
+            _tiles.Add(tile);
         }
 
         public Tile GetTile(Vector2Int tilePosition)
@@ -77,13 +152,16 @@ namespace SS3D.Core.Tilemaps
         public Tile GetTile(int positionX, int positionY)
         {
             Vector2Int tilePosition = new Vector2Int(positionX, positionY);
-            return _tiles.Where((tile) => tile.Position == tilePosition).ToArray()[0];
-        }
 
-        private void OnEnable()
-        {
-            IsInitialized = false;
-            Initialize();
+            foreach (Tile tile in _tiles)
+            {
+                if (tile.Position == tilePosition)
+                {
+                    return tile;
+                }
+            }
+                       
+            return null;
         }
 
         private void Awake()
@@ -99,7 +177,7 @@ namespace SS3D.Core.Tilemaps
             }
         }
 
-        #if UNITY_EDITOR
+#if UNITY_EDITOR
         private void OnValidate()
         {
             if (Instance != null && Instance != this)
@@ -109,13 +187,16 @@ namespace SS3D.Core.Tilemaps
             else
             {
                 Instance = this;
-                EditorApplication.delayCall += () => {
+                EditorApplication.delayCall += () =>
+                {
                     if (this)
-                        Reinitialize();
+                    {
+                        //Reinitialize();
+                    }
                 };
             }
         }
-        #endif
+#endif
 
         /// <summary>
         /// Adds a new Tilemap. Should only be called from the Editor.
@@ -187,6 +268,7 @@ namespace SS3D.Core.Tilemaps
             {
                 existingMap.IsMain = false;
             }
+
             map.IsMain = true;
         }
 
@@ -198,10 +280,13 @@ namespace SS3D.Core.Tilemaps
         /// <param name="tileObjectSo"></param>
         /// <param name="position"></param>
         /// <param name="dir"></param>
-        public void SetTileObject(TilemapData map, int subLayerIndex, TileObjectSo tileObjectSo, Vector3 position, Direction dir)
+        public void SetTileObject(TilemapData map, int subLayerIndex, TileObjectSo tileObjectSo, Vector3 position,
+            Direction dir)
         {
             if (CanBuild(map, subLayerIndex, tileObjectSo, position, dir, false))
+            {
                 map.SetTileObject(subLayerIndex, tileObjectSo, position, dir);
+            }
         }
 
         /// <summary>
@@ -212,8 +297,11 @@ namespace SS3D.Core.Tilemaps
         /// <param name="dir"></param>
         public void SetTileObject(TileObjectSo tileObjectSo, Vector3 position, Direction dir)
         {
-            if (tileObjectSo.layer == TileLayer.HighWallMount || tileObjectSo.layer == TileLayer.LowWallMount)
-                Debug.LogError($"[{typeof(TileManager)}] - Simplified function SetTileObject() is used. Do not use this function with layers where a sub index is required!");
+            if (tileObjectSo.layer is TileLayer.HighWallMount or TileLayer.LowWallMount)
+            {
+                Debug.LogError(
+                    $"[{typeof(TileManager)}] - Simplified function SetTileObject() is used. Do not use this function with layers where a sub index is required!");
+            }
 
             GetMainMap().SetTileObject(0, tileObjectSo, position, dir);
         }
@@ -238,7 +326,8 @@ namespace SS3D.Core.Tilemaps
         /// <param name="tileObjectSoName"></param>
         /// <param name="position"></param>
         /// <param name="dir"></param>
-        public void SetTileObject(TilemapData map, int subLayerIndex, string tileObjectSoName, Vector3 position, Direction dir)
+        public void SetTileObject(TilemapData map, int subLayerIndex, string tileObjectSoName, Vector3 position,
+            Direction dir)
         {
             SetTileObject(map, subLayerIndex, GetTileObjectSo(tileObjectSoName), position, dir);
         }
@@ -252,7 +341,8 @@ namespace SS3D.Core.Tilemaps
         /// <param name="position"></param>
         /// <param name="dir"></param>
         /// <returns></returns>
-        public bool CanBuild(TilemapData selectedMap, int subLayerIndex, TileObjectSo tileObjectSo, Vector3 position, Direction dir, bool overrideAllowed)
+        public bool CanBuild(TilemapData selectedMap, int subLayerIndex, TileObjectSo tileObjectSo, Vector3 position,
+            Direction dir, bool overrideAllowed)
         {
             bool canBuild = true;
             foreach (TilemapData map in _mapList)
@@ -262,12 +352,14 @@ namespace SS3D.Core.Tilemaps
                     if (overrideAllowed)
                     {
                         // Do not check if the tile is occupied. Only apply tile restrictions.
-                        canBuild &= map.CanBuild(subLayerIndex, tileObjectSo, position, dir, CheckRestrictions.OnlyRestrictions);
+                        canBuild &= map.CanBuild(subLayerIndex, tileObjectSo, position, dir,
+                            CheckRestrictions.OnlyRestrictions);
                     }
                     else
                     {
                         // Check for tile restrictions as well.
-                        canBuild &= map.CanBuild(subLayerIndex, tileObjectSo, position, dir, CheckRestrictions.Everything);
+                        canBuild &= map.CanBuild(subLayerIndex, tileObjectSo, position, dir,
+                            CheckRestrictions.Everything);
                     }
                 }
                 else
@@ -276,6 +368,7 @@ namespace SS3D.Core.Tilemaps
                     canBuild &= map.CanBuild(subLayerIndex, tileObjectSo, position, dir, CheckRestrictions.None);
                 }
             }
+
             return canBuild;
         }
 
@@ -289,7 +382,10 @@ namespace SS3D.Core.Tilemaps
         public bool CanBuild(TileObjectSo tileObjectSo, Vector3 position, Direction dir)
         {
             if (tileObjectSo.layer == TileLayer.HighWallMount || tileObjectSo.layer == TileLayer.LowWallMount)
-                Debug.LogError($"[{typeof(TileManager)}] - Simplified function CanBuild() is used. Do not use this function with layers where a sub index is required!");
+            {
+                Debug.LogError(
+                    $"[{typeof(TileManager)}] - Simplified function CanBuild() is used. Do not use this function with layers where a sub index is required!");
+            }
 
             return CanBuild(GetMainMap(), 0, tileObjectSo, position, dir, false);
         }
@@ -314,7 +410,10 @@ namespace SS3D.Core.Tilemaps
         public void ClearTileObject(TileLayer layer, Vector3 position)
         {
             if (layer == TileLayer.HighWallMount || layer == TileLayer.LowWallMount)
-                Debug.LogError($"[{typeof(TileManager)}] - Simplified function CanBuild() is used. Do not use this function with layers where a sub index is required!");
+            {
+                Debug.LogError(
+                    $"[{typeof(TileManager)}] - Simplified function CanBuild() is used. Do not use this function with layers where a sub index is required!");
+            }
 
             ClearTileObject(GetMainMap(), layer, 0, position);
         }
@@ -326,7 +425,8 @@ namespace SS3D.Core.Tilemaps
         /// <returns></returns>
         public TileObjectSo GetTileObjectSo(string tileObjectSoName)
         {
-            TileObjectSo tileObjectSo = TileObjectSOs.FirstOrDefault(tileObject => tileObject.nameString == tileObjectSoName);
+            TileObjectSo tileObjectSo =
+                TileObjectSOs.FirstOrDefault(tileObject => tileObject.nameString == tileObjectSoName);
             if (tileObjectSo == null)
             {
                 Debug.LogError($"[{typeof(TileManager)}] - TileObjectSO was not found: " + tileObjectSoName);
@@ -379,7 +479,7 @@ namespace SS3D.Core.Tilemaps
             {
                 Debug.Log($"[{typeof(TileManager)}] - No saved maps found. Creating default one.");
                 CreateEmptyMap();
-                _mapList[_mapList.Count - 1].IsMain = true;
+                _mapList[^1].IsMain = true;
                 SaveAll();
                 return;
             }
@@ -401,9 +501,11 @@ namespace SS3D.Core.Tilemaps
                         map = child.GetComponent<TilemapData>();
                         found = true;
                     }
+
                     if (!found)
                     {
-                        Debug.LogWarning($"[{typeof(TileManager)}] - Map was not found when reinitializing: " + s.MapName);
+                        Debug.LogWarning($"[{typeof(TileManager)}] - Map was not found when reinitializing: " +
+                                         s.MapName);
                         continue;
                     }
 
@@ -417,6 +519,7 @@ namespace SS3D.Core.Tilemaps
                     map.Load(s, false);
                     Debug.Log($"[{typeof(TileManager)}] - Tilemaps loaded from save");
                 }
+
                 _mapList.Add(map);
             }
         }
@@ -445,7 +548,7 @@ namespace SS3D.Core.Tilemaps
 
             for (int i = transform.childCount - 1; i >= 0; --i)
             {
-                 DestroyImmediate(transform.GetChild(i).gameObject);
+                DestroyImmediate(transform.GetChild(i).gameObject);
             }
 
             _mapList.Clear();
@@ -459,12 +562,11 @@ namespace SS3D.Core.Tilemaps
         {
 #if UNITY_EDITOR
             if (EditorUtility.DisplayDialog("Resetting Tilemap",
-                        "Are you sure that you want to reset? This will DESTROY the currently saved map"
-                        , "Ok", "Cancel"))
+                    "Are you sure that you want to reset? This will DESTROY the currently saved map", "Ok", "Cancel"))
             {
                 DestroyMaps();
                 CreateEmptyMap();
-                _mapList[_mapList.Count - 1].IsMain = true;
+                _mapList[^1].IsMain = true;
                 SaveAll();
             }
 #endif
