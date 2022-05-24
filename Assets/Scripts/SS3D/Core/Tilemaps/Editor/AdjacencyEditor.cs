@@ -1,6 +1,7 @@
 ﻿using SS3D.Core.Tilemaps;
 using SS3D.Core.Tilemaps.Connections;
 using SS3D.Core.Tilemaps.Connections.AdjacencyTypes;
+using SS3D.Core.Tilemaps.TileObjects;
 using SS3D.Engine.Tile.TileRework;
 using SS3D.Engine.Tile.TileRework.Connections;
 using SS3D.Engine.Tile.TileRework.Connections.AdjacencyTypes;

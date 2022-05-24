@@ -95,6 +95,7 @@ namespace SS3D.Core.Tilemaps
         /// </summary>
         public void DestroySelf()
         {
+            Debug.Log("destroying self");
             _adjacencyConnector?.CleanAdjacencies();
             DestroyImmediate(gameObject);
         }

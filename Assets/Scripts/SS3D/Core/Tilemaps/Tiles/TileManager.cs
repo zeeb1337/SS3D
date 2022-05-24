@@ -2,12 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using Mirror;
-using SS3D.Data.Messages;
+using SS3D.Core.Tilemaps.SaveSystems;
+using SS3D.Core.Tilemaps.TileObjects;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using static SS3D.Core.Tilemaps.TilemapData;
-using static SS3D.Core.Tilemaps.TileRestrictions;
+using static SS3D.Core.Tilemaps.TileObjects.TilemapData;
+using static SS3D.Core.Tilemaps.Tiles.TileRestrictions;
 
 namespace SS3D.Core.Tilemaps
 {

@@ -5,12 +5,12 @@ using UnityEngine;
 namespace SS3D.Core.Tilemaps
 {
     /// <summary>
-    /// Class for the base TileObject that is used by the Tilemap.
+    /// Class for the base TileObjectBase that is used by the Tilemap.
     /// </summary>
-    public class TileObject
+    public class TileObjectBase
     {
         /// <summary>
-        /// Save object used for reconstructing a TileObject.
+        /// Save object used for reconstructing a TileObjectBase.
         /// </summary>
         [Serializable]
         public class TileSaveObject
@@ -21,13 +21,13 @@ namespace SS3D.Core.Tilemaps
             public PlacedTileObject.PlacedSaveObject[] placedSaveObjects;
         }
 
-        private readonly TileChunk _map;
-        private readonly TileLayer _layer;
-        private readonly int _x;
-        private readonly int _y;
-        public readonly PlacedTileObject[] PlacedObjects;
+        protected TileChunk _map;
+        protected TileLayer _layer;
+        protected int _x;
+        protected int _y;
+        protected PlacedTileObject[] PlacedObjects;
 
-        public TileObject(TileChunk map, TileLayer layer, int x, int y, int subLayerSize)
+        public TileObjectBase(TileChunk map, TileLayer layer, int x, int y, int subLayerSize)
         {
             _map = map;
             _layer = layer;
@@ -37,13 +37,15 @@ namespace SS3D.Core.Tilemaps
         }
 
         /// <summary>
-        /// Sets a PlacedObject on the TileObject.
+        /// Sets a PlacedObject on the TileObjectBase.
         /// </summary>
         /// <param name="placedObject"></param>
         /// <param name="subLayerIndex">Which sublayer to place the object</param>
         public void SetPlacedObject(PlacedTileObject placedObject, int subLayerIndex)
         {
+            Debug.Log($"settings placed object {placedObject.name} to {subLayerIndex}");
             PlacedObjects[subLayerIndex] = placedObject;
+            Debug.Log($"placed object {PlacedObjects[subLayerIndex].name}");
             _map.TriggerGridObjectChanged(_x, _y);
         }
 
@@ -65,9 +67,16 @@ namespace SS3D.Core.Tilemaps
         /// </summary>
         public void ClearAllPlacedObjects()
         {
+            Debug.Log($"map {_map.IsEmpty()}");
+            
             foreach (PlacedTileObject placedObject in PlacedObjects)
+            {
+                Debug.Log($"placed objects: {PlacedObjects.Length}");
+                Debug.Log($"{placedObject.name}");
                 placedObject.DestroySelf();
+            }
 
+            Debug.Log($"map {_map.IsEmpty()}");
             _map.TriggerGridObjectChanged(_x, _y);
         }
 

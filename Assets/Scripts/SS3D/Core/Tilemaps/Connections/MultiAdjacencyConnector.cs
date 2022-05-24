@@ -1,5 +1,6 @@
 ﻿using Mirror;
 using SS3D.Core.Tilemaps.Connections.AdjacencyTypes;
+using SS3D.Core.Tilemaps.TileObjects;
 using SS3D.Engine.Tile.TileRework;
 using SS3D.Engine.Tile.TileRework.Connections;
 using SS3D.Engine.Tile.TileRework.Connections.AdjacencyTypes;
@@ -181,7 +182,7 @@ namespace SS3D.Core.Tilemaps.Connections
             {
                 // Get the neighbour for a given direction
                 var vector = TileHelper.ToCardinalVector(dir);
-                TileObject neighbour = map.GetTileObject(layer, transform.position + new Vector3(vector.Item1, 0, vector.Item2));
+                TileObjectBase neighbour = map.GetTileObject(layer, transform.position + new Vector3(vector.Item1, 0, vector.Item2));
 
                 if ((neighbour.GetPlacedObject(0) && neighbour.GetPlacedObject(0).HasAdjacencyConnector()) || layer == ownLayer)
                 {
@@ -347,7 +348,7 @@ namespace SS3D.Core.Tilemaps.Connections
                     {
                         // Get the neighbour for a given direction
                         var vector = TileHelper.ToCardinalVector((Direction)i);
-                        TileObject neighbour = map.GetTileObject(layer, transform.position + new Vector3(vector.Item1, 0, vector.Item2));
+                        TileObjectBase neighbour = map.GetTileObject(layer, transform.position + new Vector3(vector.Item1, 0, vector.Item2));
 
                         if ((neighbour.GetPlacedObject(0) && neighbour.GetPlacedObject(0).HasAdjacencyConnector()))
                         {

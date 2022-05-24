@@ -14,6 +14,6 @@ namespace SS3D.Core.Tilemaps.Chunk
         public int Height;
         public float TileSize;
         public Vector3 OriginPosition;
-        public TileObject.TileSaveObject[] TileObjectSaveObjectArray;
+        public TileObjectBase.TileSaveObject[] TileObjectSaveObjectArray;
     }
 }

@@ -1,7 +1,8 @@
 ﻿using System.Collections.Generic;
+using SS3D.Core.Tilemaps.TileObjects;
 using UnityEngine;
 
-namespace SS3D.Core.Tilemaps
+namespace SS3D.Core.Tilemaps.Tiles
 {
     /// <summary>
     /// Class used for setting certain restrictions when building objects on the tilemap. For example, most objects cannot be build if a plenum is missing.
@@ -35,7 +36,7 @@ namespace SS3D.Core.Tilemaps
         {
             TileManager tileManager = TileManager.Instance;
             TileLayer placedLayer = tileObjectSO.layer;
-            TileObject[] tileObjects = new TileObject[TileHelper.GetTileLayers().Length];
+            TileObjectBase[] tileObjects = new TileObjectBase[TileHelper.GetTileLayers().Length];
 
             foreach (TileLayer layer in TileHelper.GetTileLayers())
             {
@@ -67,7 +68,7 @@ namespace SS3D.Core.Tilemaps
                 case TileLayer.FurnitureTop:
                 case TileLayer.Overlay:
                 {
-                    TileObject wallObject = map.GetTileObject(TileLayer.Turf, position);
+                    TileObjectBase wallObject = map.GetTileObject(TileLayer.Turf, position);
                     if (!wallObject.IsCompletelyEmpty() && wallObject.GetPlacedObject(0).GetGenericType() == TileObjectGenericType.Wall)
                         return false;
                     break;
@@ -93,7 +94,7 @@ namespace SS3D.Core.Tilemaps
         /// <returns></returns>
         private static bool CanBuildWallAttachment(TilemapData map, Vector3 position, TileObjectSo wallAttachment, Direction dir)
         {
-            TileObject wallObject = map.GetTileObject(TileLayer.Turf, position);
+            TileObjectBase wallObject = map.GetTileObject(TileLayer.Turf, position);
             // Cannot build when there isn't a wall
             if (wallObject.IsCompletelyEmpty() || wallObject.GetPlacedObject(0).GetGenericType() != TileObjectGenericType.Wall)
                 return false;
@@ -120,19 +121,19 @@ namespace SS3D.Core.Tilemaps
         /// <returns></returns>
         private static bool CanBuildOnPlenum(TilemapData map, Vector3 position, TileObjectSo plenumAttachment, Direction dir)
         {
-            TileObject plenumObject = map.GetTileObject(TileLayer.Plenum, position);
+            TileObjectBase plenumObjectB = map.GetTileObject(TileLayer.Plenum, position);
 
             // No plenum means we cannot build anything on top
-            if (plenumObject.IsCompletelyEmpty())
+            if (plenumObjectB.IsCompletelyEmpty())
                 return false;
 
             // Only allow wires and machines on catwalks
-            if (plenumObject.GetPlacedObject(0).name.Contains("Catwalk") && (plenumAttachment.layer != TileLayer.Wire &&
+            if (plenumObjectB.GetPlacedObject(0).name.Contains("Catwalk") && (plenumAttachment.layer != TileLayer.Wire &&
                 plenumAttachment.layer != TileLayer.FurnitureBase))
                 return false;
 
             // Can only build on a Plenum and not Catwalks or Lattices
-            if (!plenumObject.GetPlacedObject(0).name.Contains("Plenum") && !plenumObject.GetPlacedObject(0).name.Contains("Catwalk"))
+            if (!plenumObjectB.GetPlacedObject(0).name.Contains("Plenum") && !plenumObjectB.GetPlacedObject(0).name.Contains("Catwalk"))
                 return false;
 
             return true;
@@ -145,9 +146,9 @@ namespace SS3D.Core.Tilemaps
         /// <param name="layer"></param>
         /// <param name="position"></param>
         /// <returns></returns>
-        public static List<TileObject> GetToBeDestroyedObjects(TilemapData map, TileLayer layer, Vector3 position)
+        public static List<TileObjectBase> GetToBeDestroyedObjects(TilemapData map, TileLayer layer, Vector3 position)
         {
-            List<TileObject> toBeDestroyedList = new List<TileObject>();
+            List<TileObjectBase> toBeDestroyedList = new List<TileObjectBase>();
 
             // Remove everything when the plenum is missing
             if (layer == TileLayer.Plenum)

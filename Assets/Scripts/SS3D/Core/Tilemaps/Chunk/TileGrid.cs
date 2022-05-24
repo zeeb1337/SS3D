@@ -6,6 +6,6 @@ namespace SS3D.Core.Tilemaps.Chunk
     public struct TileGrid
     {
         public TileLayer Layer;
-        public TileObject[] TileObjectsGrid;
+        public TileObjectBase[] TileObjectsGrid;
     }
 }

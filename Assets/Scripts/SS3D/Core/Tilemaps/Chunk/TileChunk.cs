@@ -12,7 +12,7 @@ namespace SS3D.Core.Tilemaps.Chunk
     public class TileChunk
     {
         /// <summary>
-        /// Event that is triggered when a TileObject changes.
+        /// Event that is triggered when a TileObjectBase changes.
         /// </summary>
         public event EventHandler<OnGridObjectChangedEventArgs> OnGridObjectChanged;
 
@@ -47,7 +47,7 @@ namespace SS3D.Core.Tilemaps.Chunk
             TileGrid grid = new TileGrid { Layer = layer };
 
             int gridSize = _width * _height;
-            grid.TileObjectsGrid = new TileObject[gridSize];
+            grid.TileObjectsGrid = new TileObjectBase[gridSize];
 
             int subLayerSize = TileHelper.GetSubLayerSize(layer);
 
@@ -55,7 +55,7 @@ namespace SS3D.Core.Tilemaps.Chunk
             {
                 for (int y = 0; y < _height; y++)
                 {
-                    grid.TileObjectsGrid[y * _width + x] = new TileObject(this, layer, x, y, subLayerSize);
+                    grid.TileObjectsGrid[y * _width + x] = new TileObjectBase(this, layer, x, y, subLayerSize);
                 }
             }
 
@@ -133,8 +133,8 @@ namespace SS3D.Core.Tilemaps.Chunk
                 {
                     for (int y = 0; y < _height; y++)
                     {
-                        TileObject tileObject = GetTileObject(layer, x, y);
-                        if (!tileObject.IsCompletelyEmpty())
+                        TileObjectBase tileObjectBase = GetTileObject(layer, x, y);
+                        if (!tileObjectBase.IsCompletelyEmpty())
                             empty = false;
                     }
                 }
@@ -163,13 +163,13 @@ namespace SS3D.Core.Tilemaps.Chunk
         }
 
         /// <summary>
-        /// Sets a TileObject value for a given x and y.
+        /// Sets a TileObjectBase value for a given x and y.
         /// </summary>
         /// <param name="layer"></param>
         /// <param name="x"></param>
         /// <param name="y"></param>
         /// <param name="value"></param>
-        public void SetTileObject(TileLayer layer, int x, int y, TileObject value)
+        public void SetTileObject(TileLayer layer, int x, int y, TileObjectBase value)
         {
             if (x >= 0 && y >= 0 && x < _width && y < _height)
             {
@@ -179,25 +179,25 @@ namespace SS3D.Core.Tilemaps.Chunk
         }
 
         /// <summary>
-        /// Sets a TileObject value for a given world position.
+        /// Sets a TileObjectBase value for a given world position.
         /// </summary>
         /// <param name="layer"></param>
         /// <param name="worldPosition"></param>
         /// <param name="value"></param>
-        public void SetTileObject(TileLayer layer, Vector3 worldPosition, TileObject value)
+        public void SetTileObject(TileLayer layer, Vector3 worldPosition, TileObjectBase value)
         {
             Vector2Int vector = GetXY(worldPosition);
             SetTileObject(layer, vector.x, vector.y, value);
         }
 
         /// <summary>
-        /// Gets a TileObject value for a given x and y.
+        /// Gets a TileObjectBase value for a given x and y.
         /// </summary>
         /// <param name="layer"></param>
         /// <param name="x"></param>
         /// <param name="y"></param>
         /// <returns></returns>
-        public TileObject GetTileObject(TileLayer layer, int x, int y)
+        public TileObjectBase GetTileObject(TileLayer layer, int x, int y)
         {
             if (x >= 0 && y >= 0 && x < _width && y < _height)
             {
@@ -207,12 +207,12 @@ namespace SS3D.Core.Tilemaps.Chunk
         }
 
         /// <summary>
-        /// Gets a TileObject value for a given world position.
+        /// Gets a TileObjectBase value for a given world position.
         /// </summary>
         /// <param name="layer"></param>
         /// <param name="worldPosition"></param>
         /// <returns></returns>
-        public TileObject GetTileObject(TileLayer layer, Vector3 worldPosition)
+        public TileObjectBase GetTileObject(TileLayer layer, Vector3 worldPosition)
         {
             Vector2Int vector = GetXY(worldPosition);
             return GetTileObject(layer, vector.x, vector.y);
@@ -234,12 +234,12 @@ namespace SS3D.Core.Tilemaps.Chunk
                 {
                     for (int y = 0; y < _height; y++)
                     {
-                        TileObject tileObject = GetTileObject(layer, x, y);
+                        TileObjectBase tileObjectBase = GetTileObject(layer, x, y);
                         for (int i = 0; i < TileHelper.GetSubLayerSize(layer); i++)
                         {
-                            if (!tileObject.IsEmpty(i))
+                            if (!tileObjectBase.IsEmpty(i))
                             {
-                                tileObject.ClearPlacedObject(i);
+                                tileObjectBase.ClearPlacedObject(i);
                             }
                         }
                     }
@@ -253,7 +253,7 @@ namespace SS3D.Core.Tilemaps.Chunk
         /// <returns></returns>
         public TileChunkSaveObject Save()
         {
-            List<TileObject.TileSaveObject> tileObjectSaveObjectList = new List<TileObject.TileSaveObject>();
+            List<TileObjectBase.TileSaveObject> tileObjectSaveObjectList = new List<TileObjectBase.TileSaveObject>();
 
             foreach (TileLayer layer in TileHelper.GetTileLayers())
             {
@@ -261,10 +261,10 @@ namespace SS3D.Core.Tilemaps.Chunk
                 {
                     for (int y = 0; y < _height; y++)
                     {
-                        TileObject tileObject = GetTileObject(layer, x, y);
-                        if (!tileObject.IsCompletelyEmpty())
+                        TileObjectBase tileObjectBase = GetTileObject(layer, x, y);
+                        if (!tileObjectBase.IsCompletelyEmpty())
                         {
-                            tileObjectSaveObjectList.Add(tileObject.Save());
+                            tileObjectSaveObjectList.Add(tileObjectBase.Save());
                         }
                     }
                 }

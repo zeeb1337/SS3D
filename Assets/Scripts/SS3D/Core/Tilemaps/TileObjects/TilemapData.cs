@@ -2,10 +2,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using SS3D.Core.Tilemaps.Chunk;
+using SS3D.Core.Tilemaps.Tiles;
 using UnityEngine;
-using static SS3D.Core.Tilemaps.TileRestrictions;
+using static SS3D.Core.Tilemaps.Tiles.TileRestrictions;
 
-namespace SS3D.Core.Tilemaps
+namespace SS3D.Core.Tilemaps.TileObjects
 {
     /// <summary>
     /// Class used for storing and modifying a tile map.
@@ -40,7 +41,7 @@ namespace SS3D.Core.Tilemaps
         private TileManager _tileManager;
         private Dictionary<Vector2Int, TileChunk> _chunks;
 
-        public int ChunkCount => _chunks.Count;
+        public int ChunkCount => _chunks?.Count ?? 0;
         public bool IsMain { get; set; }
 
         /// <summary>
@@ -123,6 +124,11 @@ namespace SS3D.Core.Tilemaps
         {
             // Number of _chunks can be modified during deletion, so create a copy
             List<TileChunk> tempChunkList = new List<TileChunk>();
+            if (_chunks == null)
+            {
+                return;
+            }
+
             tempChunkList.AddRange(_chunks.Values);
 
             foreach (TileChunk chunk in tempChunkList)
@@ -166,8 +172,10 @@ namespace SS3D.Core.Tilemaps
         {
             Vector2Int key = GetKey(worldPosition);
 
+            _chunks ??= new Dictionary<Vector2Int, TileChunk>();
+            
             // Create a new chunk if there is none
-            if (_chunks.TryGetValue(key, out _))
+            if (_chunks != null && _chunks.TryGetValue(key, out _))
             {
                 return _chunks[key];
             }
@@ -252,7 +260,7 @@ namespace SS3D.Core.Tilemaps
         }
 
         /// <summary>
-        /// Sets a specified TileObject on the map.
+        /// Sets a specified TileObjectBase on the map.
         /// </summary>
         /// <param name="subLayerIndex">Sub layer the object should go. Usually zero</param>
         /// <param name="tileObjectSo">Object to place</param>
@@ -359,10 +367,13 @@ namespace SS3D.Core.Tilemaps
 
             if (placedObject != null)
             {
+                Debug.Log("placed object is not null");
                 // Destroy any objects that are on top
-                foreach (var topPlacedObject in TileRestrictions.GetToBeDestroyedObjects(this, layer, position))
+                foreach (TileObjectBase topPlacedObject in GetToBeDestroyedObjects(this, layer, position))
                 {
+                    Debug.Log($"trying to destroy placed object layer {layer}");
                     topPlacedObject.ClearAllPlacedObjects();
+                    Debug.Log("destoryed placed object");
                 }
 
                 List<Vector2Int> gridPositionList = placedObject.GetGridPositionList();
@@ -388,12 +399,12 @@ namespace SS3D.Core.Tilemaps
         }
 
         /// <summary>
-        /// Returns a TileObject at a given layer and world position.
+        /// Returns a TileObjectBase at a given layer and world position.
         /// </summary>
         /// <param name="layer"></param>
         /// <param name="worldPosition"></param>
         /// <returns></returns>
-        public TileObject GetTileObject(TileLayer layer, Vector3 worldPosition)
+        public TileObjectBase GetTileObject(TileLayer layer, Vector3 worldPosition)
         {
             TileChunk chunk = GetOrCreateChunk(worldPosition);
             return chunk.GetTileObject(layer, worldPosition);
@@ -402,19 +413,19 @@ namespace SS3D.Core.Tilemaps
         public void UpdateNeighbours(TileLayer layer, Vector3 worldPosition)
         {
             PlacedTileObject[] adjacentObjects = new PlacedTileObject[8];
-            TileObject currentTileObject = GetTileObject(layer, worldPosition);
+            TileObjectBase currentTileObjectBase = GetTileObject(layer, worldPosition);
 
             // Find the neighbours in each direction
             for (Direction direction = Direction.North; direction <= Direction.NorthWest; direction++)
             {
                 (int positionX, int positionY) = TileHelper.ToCardinalVector(direction);
-                TileObject neighbour = GetTileObject(layer, worldPosition + new Vector3(positionX, 0, positionY));
+                TileObjectBase neighbour = GetTileObject(layer, worldPosition + new Vector3(positionX, 0, positionY));
 
                 adjacentObjects[(int)direction] = neighbour.GetPlacedObject(0);
-                neighbour.GetPlacedObject(0)?.UpdateSingleNeighbour(TileHelper.GetOpposite(direction), currentTileObject.GetPlacedObject(0));
+                neighbour.GetPlacedObject(0)?.UpdateSingleNeighbour(TileHelper.GetOpposite(direction), currentTileObjectBase.GetPlacedObject(0));
             }
 
-            currentTileObject.GetPlacedObject(0)?.UpdateAllNeighbours(adjacentObjects);
+            currentTileObjectBase.GetPlacedObject(0)?.UpdateAllNeighbours(adjacentObjects);
         }
 
         /// <summary>
@@ -436,13 +447,13 @@ namespace SS3D.Core.Tilemaps
                         for (int y = 0; y < chunk.GetHeight(); y++)
                         {
                             // Make sure that there is an placed object and that we have an adjacency connector
-                            TileObject tileObject = chunk.GetTileObject(layer, x, y);
-                            if (!tileObject.IsEmpty(0) && tileObject.GetPlacedObject(0).HasAdjacencyConnector())
+                            TileObjectBase tileObjectBase = chunk.GetTileObject(layer, x, y);
+                            if (!tileObjectBase.IsEmpty(0) && tileObjectBase.GetPlacedObject(0).HasAdjacencyConnector())
                             {
                                 // Find the neighbours in each direction
                                 Vector3 currentPosition = chunk.GetWorldPosition(x, y);
                                 PlacedTileObject[] adjacentObjects = GetNeighbourObjects(layer, 0, currentPosition);
-                                tileObject.GetPlacedObject(0).UpdateAllNeighbours(adjacentObjects);
+                                tileObjectBase.GetPlacedObject(0).UpdateAllNeighbours(adjacentObjects);
                             }
                         }
                     }
@@ -464,7 +475,7 @@ namespace SS3D.Core.Tilemaps
             for (Direction direction = Direction.North; direction <= Direction.NorthWest; direction++)
             {
                 var vector = TileHelper.ToCardinalVector(direction);
-                TileObject neighbour = GetTileObject(layer, position + new Vector3(vector.Item1, 0, vector.Item2));
+                TileObjectBase neighbour = GetTileObject(layer, position + new Vector3(vector.Item1, 0, vector.Item2));
 
                 adjacentObjects[(int)direction] = neighbour.GetPlacedObject(subLayerIndex);
             }
@@ -499,7 +510,7 @@ namespace SS3D.Core.Tilemaps
             IsMain = saveObject.IsMain;
 
             // Loop through every chunk in map
-            foreach (var chunk in saveObject.SaveObjectList)
+            foreach (TileChunkSaveObject chunk in saveObject.SaveObjectList)
             {
                 // Loop through every tile object in chunk
                 foreach (var tileObjectSaveObject in chunk.TileObjectSaveObjectArray)

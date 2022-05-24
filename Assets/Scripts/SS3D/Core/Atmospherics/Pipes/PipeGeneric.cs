@@ -29,7 +29,7 @@ namespace SS3D.Core.Atmospherics.Pipes
         {
             /*
             int i = 0;
-            foreach (TileObject tile in tileNeighbours)
+            foreach (TileObjectBase tile in tileNeighbours)
             {
                 if (tile != null)
                 {

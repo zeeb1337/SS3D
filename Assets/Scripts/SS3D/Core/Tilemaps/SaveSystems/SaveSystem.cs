@@ -1,7 +1,7 @@
 ﻿using System.IO;
 using UnityEngine;
 
-namespace SS3D.Core.Tilemaps
+namespace SS3D.Core.Tilemaps.SaveSystems
 {
     /// <summary>
     /// Class for the saving and loading of serialized objects. Uses Generics and can be adapted for any serializable object.

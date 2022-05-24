@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using SS3D.Core.Atmospherics.Pipes;
 using SS3D.Core.Tilemaps;
+using SS3D.Core.Tilemaps.Tiles;
 using SS3D.Engine.Atmospherics;
 using Unity.Profiling;
 using UnityEditor;
@@ -70,6 +71,9 @@ namespace SS3D.Core.Atmospherics
 
             _tileManager = TileManager.Instance;
             _pipeTiles = new List<PipeObject>();
+            _tiles = new List<Tile>();
+            _atmosObjects = new List<AtmosObject>();
+            
             _deviceTiles = new List<IAtmosLoop>();
             
             TileManager.TileManagerLoaded += Initialize;
@@ -91,7 +95,7 @@ namespace SS3D.Core.Atmospherics
 
             foreach (Tile tile in _tiles)
             {
-                tile.InitializeAtmosObject();
+                tile.Initialize(tile.Position);
                 AtmosObject atmosObject = tile.AtmosObject;
 
                 // Set neighbouring tiles... kill me
@@ -311,7 +315,10 @@ namespace SS3D.Core.Atmospherics
             // Step 1: Calculate flux
             foreach (AtmosObject tile in _atmosObjects.Where(tile => tile.GetState() == AtmosStates.Active))
             {
-                tile.CalculateFlux();
+                if (tile != null)
+                {
+                    tile.CalculateFlux();
+                }
             }
 
             // Step 2: Simulate

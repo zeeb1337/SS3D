@@ -21,7 +21,7 @@ namespace SS3D.Engine.Atmospherics
         {
             /*
             // We only check the pipes that are on our own tile
-            TileObject tileObject = GetComponentInParent<TileObject>();
+            TileObjectBase tileObject = GetComponentInParent<TileObjectBase>();
             PipeObject[] pipes = tileObject.GetComponentsInChildren<PipeObject>();
 
             int i = 0;

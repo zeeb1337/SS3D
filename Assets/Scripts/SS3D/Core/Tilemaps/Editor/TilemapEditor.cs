@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using SS3D.Core.Tilemaps.Chunk;
+using SS3D.Core.Tilemaps.TileObjects;
+using SS3D.Core.Tilemaps.Tiles;
 using SS3D.Data;
 using SS3D.Editor.TileMap;
 using SS3D.Engine.Tiles.Connections;
